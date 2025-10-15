@@ -1,0 +1,244 @@
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray } from '@angular/forms';
+
+@Component({
+  selector: 'app-doctor-medical-records',
+  templateUrl: './doctor-medical-records.component.html',
+})
+export class DoctorMedicalRecordsComponent implements OnInit {
+  recordForm!: FormGroup;
+  records: any[] = [];
+
+  constructor(private fb: FormBuilder) {}
+
+  ngOnInit(): void {
+    this.initForm();
+
+    // Mock data for UI demo
+    this.records = [
+      {
+        recordId: 1,
+        patientId: 101,
+        patientName: 'John Doe',
+        reason: 'Fever and cough',
+        diagnosis: 'Viral Infection',
+        notes: 'Prescribed rest and hydration',
+        createdAt: new Date(),
+        prescriptions: [
+          { medicationName: 'Paracetamol', dosage: '500mg', instructions: 'Twice a day' },
+          { medicationName: 'Cough Syrup', dosage: '10ml', instructions: 'After meals' },
+        ]
+      }
+    ];
+  }
+
+  initForm() {
+    this.recordForm = this.fb.group({
+      appointmentId: [''],
+      patientId: [''],
+      reason: [''],
+      diagnosis: [''],
+      notes: [''],
+      prescriptions: this.fb.array([]),
+    });
+  }
+
+  get prescriptions(): FormArray {
+    return this.recordForm.get('prescriptions') as FormArray;
+  }
+
+  addPrescription() {
+    const p = this.fb.group({
+      medicationName: [''],
+      dosage: [''],
+      instructions: [''],
+    });
+    this.prescriptions.push(p);
+  }
+
+  removePrescription(index: number) {
+    this.prescriptions.removeAt(index);
+  }
+
+  submit() {
+    console.log('Record Submitted:', this.recordForm.value);
+    // Just mock UI feedback
+    alert('Record added successfully (mock)');
+    this.recordForm.reset();
+    this.prescriptions.clear();
+  }
+}
+
+
+
+
+
+
+<div class="p-6 space-y-6">
+  <h2 class="text-2xl font-semibold text-gray-800">Medical Records (Doctor)</h2>
+
+  <!-- Create new record -->
+  <form [formGroup]="recordForm" (ngSubmit)="submit()" class="bg-white shadow-lg rounded-lg p-6 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <input type="text" formControlName="appointmentId" placeholder="Appointment ID" class="input" />
+      <input type="text" formControlName="patientId" placeholder="Patient ID" class="input" />
+      <input type="text" formControlName="reason" placeholder="Reason" class="input col-span-2" />
+      <input type="text" formControlName="diagnosis" placeholder="Diagnosis" class="input col-span-2" />
+      <textarea formControlName="notes" placeholder="Notes" class="input col-span-2"></textarea>
+    </div>
+
+    <div>
+      <h3 class="font-semibold mb-2">Prescriptions</h3>
+      <div formArrayName="prescriptions" class="space-y-3">
+        <div *ngFor="let pres of prescriptions.controls; let i=index" [formGroupName]="i"
+             class="grid grid-cols-3 gap-3 bg-gray-50 p-3 rounded-lg">
+          <input formControlName="medicationName" placeholder="Medication" class="input" />
+          <input formControlName="dosage" placeholder="Dosage" class="input" />
+          <input formControlName="instructions" placeholder="Instructions" class="input" />
+          <button type="button" (click)="removePrescription(i)" class="text-red-500 text-sm mt-1 col-span-3 text-right">
+            Remove
+          </button>
+        </div>
+      </div>
+
+      <button type="button" (click)="addPrescription()" class="btn mt-3">+ Add Prescription</button>
+    </div>
+
+    <button type="submit" class="btn bg-blue-600 text-white mt-4">Save Record</button>
+  </form>
+
+  <!-- Records list -->
+  <div class="space-y-4">
+    <h3 class="text-xl font-semibold text-gray-700">Existing Records</h3>
+    <div *ngFor="let record of records" class="bg-white p-5 rounded-lg shadow space-y-2">
+      <h4 class="font-semibold text-lg">Patient: {{record.patientName}} (ID: {{record.patientId}})</h4>
+      <p><b>Reason:</b> {{record.reason}}</p>
+      <p><b>Diagnosis:</b> {{record.diagnosis}}</p>
+      <p><b>Notes:</b> {{record.notes}}</p>
+      <p class="text-gray-500 text-sm">Created: {{record.createdAt | date:'short'}}</p>
+
+      <div *ngIf="record.prescriptions.length" class="border-t pt-2">
+        <h5 class="font-semibold">Prescriptions</h5>
+        <ul class="list-disc ml-6">
+          <li *ngFor="let p of record.prescriptions">
+            {{p.medicationName}} - {{p.dosage}} ({{p.instructions}})
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Component, OnInit } from '@angular/core';
+
+@Component({
+  selector: 'app-patient-medical-records',
+  templateUrl: './patient-medical-records.component.html',
+})
+export class PatientMedicalRecordsComponent implements OnInit {
+  records: any[] = [];
+
+  ngOnInit(): void {
+    // Mock records for now
+    this.records = [
+      {
+        recordId: 1,
+        doctorName: 'Dr. Sarah Lee',
+        reason: 'Headache',
+        diagnosis: 'Migraine',
+        notes: 'Avoid bright lights and take rest',
+        createdAt: new Date(),
+        prescriptions: [
+          { medicationName: 'Ibuprofen', dosage: '200mg', instructions: 'Twice daily after meals' },
+        ]
+      },
+      {
+        recordId: 2,
+        doctorName: 'Dr. Rahul Mehta',
+        reason: 'Cold and Cough',
+        diagnosis: 'Common Cold',
+        notes: 'Drink warm fluids and use steam inhalation',
+        createdAt: new Date(),
+        prescriptions: [
+          { medicationName: 'Cetirizine', dosage: '10mg', instructions: 'Once daily at night' },
+        ]
+      }
+    ];
+  }
+}
+
+
+
+
+
+<div class="p-6 space-y-6">
+  <h2 class="text-2xl font-semibold text-gray-800">My Medical Records</h2>
+
+  <div *ngIf="records.length === 0" class="text-gray-500">No records found.</div>
+
+  <div *ngFor="let record of records" class="bg-white p-5 rounded-lg shadow space-y-2">
+    <h3 class="text-lg font-semibold text-gray-800">Doctor: {{record.doctorName}}</h3>
+    <p><b>Reason:</b> {{record.reason}}</p>
+    <p><b>Diagnosis:</b> {{record.diagnosis}}</p>
+    <p><b>Notes:</b> {{record.notes}}</p>
+    <p class="text-gray-500 text-sm">Created: {{record.createdAt | date:'short'}}</p>
+
+    <div *ngIf="record.prescriptions.length" class="border-t pt-2">
+      <h4 class="font-semibold">Prescriptions</h4>
+      <ul class="list-disc ml-6">
+        <li *ngFor="let p of record.prescriptions">
+          {{p.medicationName}} - {{p.dosage}} ({{p.instructions}})
+        </li>
+      </ul>
+    </div>
+  </div>/
+
+
+
+
+
+
+
+* styles.css or global.css */
+.input {
+  @apply border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400;
+}
+.btn {
+  @apply px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition;
+}
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

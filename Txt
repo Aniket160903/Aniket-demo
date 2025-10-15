@@ -1,0 +1,225 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MedicalRecordService {
+  private baseUrl = 'http://localhost:8080/api/medical-records';
+
+  constructor(private http: HttpClient) {}
+
+  // Doctor creates record
+  createRecord(data: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}`, data);
+  }
+
+  // Get patient’s own records
+  getRecordsForPatient(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/patient`);
+  }
+
+  // Get all records for doctor
+  getRecordsForDoctor(doctorId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/doctor/${doctorId}`);
+  }
+}
+
+import { Component, OnInit } from '@angular/core';
+import { MedicalRecordService } from 'src/app/services/medical-record.service';
+import { FormBuilder, FormGroup, FormArray } from '@angular/forms';
+import { ToastrService } from 'ngx-toastr';
+
+@Component({
+  selector: 'app-doctor-medical-records',
+  templateUrl: './doctor-medical-records.component.html',
+})
+export class DoctorMedicalRecordsComponent implements OnInit {
+  records: any[] = [];
+  recordForm!: FormGroup;
+  doctorId!: number;
+
+  constructor(
+    private medicalRecordService: MedicalRecordService,
+    private fb: FormBuilder,
+    private toastr: ToastrService
+  ) {}
+
+  ngOnInit(): void {
+    this.doctorId = Number(localStorage.getItem('doctorId')); // assuming stored after login
+    this.loadRecords();
+    this.initForm();
+  }
+
+  initForm() {
+    this.recordForm = this.fb.group({
+      appointmentId: [''],
+      patientId: [''],
+      doctorId: [this.doctorId],
+      reason: [''],
+      diagnosis: [''],
+      notes: [''],
+      prescriptions: this.fb.array([])
+    });
+  }
+
+  get prescriptions(): FormArray {
+    return this.recordForm.get('prescriptions') as FormArray;
+  }
+
+  addPrescription() {
+    const p = this.fb.group({
+      medicationName: [''],
+      dosage: [''],
+      instructions: ['']
+    });
+    this.prescriptions.push(p);
+  }
+
+  removePrescription(i: number) {
+    this.prescriptions.removeAt(i);
+  }
+
+  submit() {
+    if (this.recordForm.invalid) return;
+
+    this.medicalRecordService.createRecord(this.recordForm.value).subscribe({
+      next: (res) => {
+        this.toastr.success('Medical record created successfully');
+        this.loadRecords();
+        this.recordForm.reset();
+        this.prescriptions.clear();
+      },
+      error: () => this.toastr.error('Failed to create record')
+    });
+  }
+
+  loadRecords() {
+    this.medicalRecordService.getRecordsForDoctor(this.doctorId).subscribe({
+      next: (data) => this.records = data,
+      error: () => this.toastr.error('Failed to fetch records')
+    });
+  }
+}
+
+
+<div class="p-6 space-y-6">
+  <h2 class="text-2xl font-semibold text-gray-800">Medical Records</h2>
+
+  <!-- Create record form -->
+  <form (ngSubmit)="submit()" [formGroup]="recordForm" class="bg-white shadow rounded-lg p-6 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <input formControlName="appointmentId" type="number" placeholder="Appointment ID" class="input" />
+      <input formControlName="patientId" type="number" placeholder="Patient ID" class="input" />
+      <input formControlName="reason" placeholder="Reason" class="input col-span-2" />
+      <input formControlName="diagnosis" placeholder="Diagnosis" class="input col-span-2" />
+      <textarea formControlName="notes" placeholder="Notes" class="input col-span-2"></textarea>
+    </div>
+
+    <!-- Prescriptions -->
+    <div>
+      <h3 class="font-semibold mb-2">Prescriptions</h3>
+      <div formArrayName="prescriptions" class="space-y-3">
+        <div *ngFor="let pres of prescriptions.controls; let i=index" [formGroupName]="i"
+             class="grid grid-cols-3 gap-3">
+          <input formControlName="medicationName" placeholder="Medication" class="input" />
+          <input formControlName="dosage" placeholder="Dosage" class="input" />
+          <input formControlName="instructions" placeholder="Instructions" class="input" />
+          <button type="button" (click)="removePrescription(i)" class="text-red-500 text-sm mt-1">Remove</button>
+        </div>
+      </div>
+      <button type="button" (click)="addPrescription()" class="btn mt-3">+ Add Prescription</button>
+    </div>
+
+    <button type="submit" class="btn bg-blue-600 text-white mt-4">Create Record</button>
+  </form>
+
+  <!-- Records list -->
+  <div class="grid gap-4">
+    <div *ngFor="let record of records" class="bg-white p-5 rounded-lg shadow">
+      <h3 class="font-semibold text-lg">Patient ID: {{record.patientId}}</h3>
+      <p><b>Reason:</b> {{record.reason}}</p>
+      <p><b>Diagnosis:</b> {{record.diagnosis}}</p>
+      <p><b>Notes:</b> {{record.notes}}</p>
+      <p class="text-gray-500 text-sm">Created: {{record.createdAt | date:'short'}}</p>
+
+      <div *ngIf="record.prescriptions?.length" class="mt-3 border-t pt-2">
+        <h4 class="font-semibold">Prescriptions:</h4>
+        <ul class="list-disc ml-6">
+          <li *ngFor="let p of record.prescriptions">
+            {{p.medicationName}} - {{p.dosage}} ({{p.instructions}})
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+import { Component, OnInit } from '@angular/core';
+import { MedicalRecordService } from 'src/app/services/medical-record.service';
+
+@Component({
+  selector: 'app-patient-medical-records',
+  templateUrl: './patient-medical-records.component.html',
+})
+export class PatientMedicalRecordsComponent implements OnInit {
+  records: any[] = [];
+
+  constructor(private medicalRecordService: MedicalRecordService) {}
+
+  ngOnInit(): void {
+    this.loadRecords();
+  }
+
+  loadRecords() {
+    this.medicalRecordService.getRecordsForPatient().subscribe({
+      next: (data) => this.records = data,
+      error: () => console.error('Failed to load records')
+    });
+  }
+}
+
+
+<div class="p-6 space-y-6">
+  <h2 class="text-2xl font-semibold text-gray-800">My Medical Records</h2>
+
+  <div *ngIf="records.length === 0" class="text-gray-500">No records available.</div>
+
+  <div *ngFor="let record of records" class="bg-white p-5 rounded-lg shadow space-y-2">
+    <p><b>Doctor:</b> {{record.doctorName}}</p>
+    <p><b>Reason:</b> {{record.reason}}</p>
+    <p><b>Diagnosis:</b> {{record.diagnosis}}</p>
+    <p><b>Notes:</b> {{record.notes}}</p>
+    <p class="text-gray-500 text-sm">Created: {{record.createdAt | date:'short'}}</p>
+
+    <div *ngIf="record.prescriptions?.length" class="mt-2 border-t pt-2">
+      <h4 class="font-semibold">Prescriptions:</h4>
+      <ul class="list-disc ml-6">
+        <li *ngFor="let p of record.prescriptions">
+          {{p.medicationName}} - {{p.dosage}} ({{p.instructions}})
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+
+const routes: Routes = [
+  { path: 'doctor/dashboard/records', component: DoctorMedicalRecordsComponent },
+  { path: 'patient/dashboard/records', component: PatientMedicalRecordsComponent },
+];
+
+
+
+
+/* Add to styles.css or global.css if not already defined */
+.input {
+  @apply border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400;
+}
+.btn {
+  @apply px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600;
+}

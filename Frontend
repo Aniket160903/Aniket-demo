@@ -1,191 +1,124 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+package com.cognizant.hams.dto.response;
 
-@Component({
-  selector: 'app-doctor-medical-records',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './doctor-medical-records.component.html'
-})
-export class DoctorMedicalRecordsComponent {
-  medicalRecords = [
-    { id: 1, patient: 'Emily Johnson', reason: 'Fever', diagnosis: 'Viral Infection', date: '2025-10-12' },
-    { id: 2, patient: 'John Doe', reason: 'Headache', diagnosis: 'Migraine', date: '2025-09-27' }
-  ];
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
-  newRecord = {
-    patientId: '',
-    reason: '',
-    diagnosis: '',
-    notes: '',
-    prescriptions: [{ medicationName: '', dosage: '', instructions: '' }]
-  };
+import java.util.List;
 
-  addPrescriptionField() {
-    this.newRecord.prescriptions.push({ medicationName: '', dosage: '', instructions: '' });
-  }
 
-  removePrescriptionField(i: number) {
-    this.newRecord.prescriptions.splice(i, 1);
-  }
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 
-  onSubmit() {
-    alert('✅ Record created successfully (mock only)');
-    console.log(this.newRecord);
-  }
+public class MedicalRecordResponseDTO {
+    private Long recordId;
+    private Long patientId;
+    private Long doctorId;
+    private String patientName;
+    private String doctorName;
+    private String reason;
+    private String diagnosis;
+    private String notes;
+    private List<PrescriptionResponseDTO> prescriptions;
+    private LocalDateTime createdAt;
+}
+package com.cognizant.hams.controller;
+
+import com.cognizant.hams.dto.request.MedicalRecordDTO;
+import com.cognizant.hams.dto.response.MedicalRecordResponseDTO;
+import com.cognizant.hams.service.MedicalRecordService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+
+@RestController
+@RequestMapping("/api/medical-records")
+@RequiredArgsConstructor
+public class MedicalRecordController {
+    private final MedicalRecordService medicalRecordService;
+    @PostMapping
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<MedicalRecordResponseDTO> createRecord(@Valid @RequestBody MedicalRecordDTO dto) {
+        MedicalRecordResponseDTO saved = medicalRecordService.createRecord(dto);
+        return new ResponseEntity<>(saved, HttpStatus.CREATED);
+    }
+    @GetMapping("/patient")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<List<MedicalRecordResponseDTO>> getRecordsForPatient() {
+        return ResponseEntity.ok(medicalRecordService.getRecordsForPatient());
+    }
+    @GetMapping("/doctor/{doctorId}")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<List<MedicalRecordResponseDTO>> getRecordsForDoctor(@PathVariable Long doctorId) {
+        return ResponseEntity.ok(medicalRecordService.getRecordsForDoctor(doctorId));
+    }
 }
 
 
+package com.cognizant.hams.dto.request;
+
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 
-
-<div class="p-6 font-sans">
-  <h2 class="text-2xl font-semibold text-blue-700 mb-4">Write Prescription / Medical Record</h2>
-
-  <div class="bg-white rounded-2xl shadow p-6 mb-6">
-    <form (ngSubmit)="onSubmit()" #form="ngForm" class="space-y-4">
-      <div>
-        <label class="block font-medium mb-1">Patient ID</label>
-        <input type="text" [(ngModel)]="newRecord.patientId" name="patientId"
-               class="w-full border border-gray-300 rounded-lg p-2 focus:ring focus:ring-blue-200" required>
-      </div>
-
-      <div>
-        <label class="block font-medium mb-1">Reason for Visit</label>
-        <input type="text" [(ngModel)]="newRecord.reason" name="reason"
-               class="w-full border border-gray-300 rounded-lg p-2" required>
-      </div>
-
-      <div>
-        <label class="block font-medium mb-1">Diagnosis</label>
-        <input type="text" [(ngModel)]="newRecord.diagnosis" name="diagnosis"
-               class="w-full border border-gray-300 rounded-lg p-2" required>
-      </div>
-
-      <div>
-        <label class="block font-medium mb-1">Notes</label>
-        <textarea [(ngModel)]="newRecord.notes" name="notes"
-                  class="w-full border border-gray-300 rounded-lg p-2"></textarea>
-      </div>
-
-      <div>
-        <h3 class="text-lg font-semibold text-blue-700 mb-2">Prescriptions</h3>
-
-        <div *ngFor="let p of newRecord.prescriptions; let i = index"
-             class="grid grid-cols-3 gap-3 items-center mb-2">
-          <input type="text" placeholder="Medication Name"
-                 [(ngModel)]="p.medicationName" name="medicationName{{i}}"
-                 class="border border-gray-300 rounded-lg p-2" required>
-          <input type="text" placeholder="Dosage"
-                 [(ngModel)]="p.dosage" name="dosage{{i}}"
-                 class="border border-gray-300 rounded-lg p-2" required>
-          <div class="flex gap-2 items-center">
-            <input type="text" placeholder="Instructions"
-                   [(ngModel)]="p.instructions" name="instructions{{i}}"
-                   class="flex-1 border border-gray-300 rounded-lg p-2">
-            <button type="button" (click)="removePrescriptionField(i)"
-                    class="bg-red-500 text-white px-2 py-1 rounded-md">✕</button>
-          </div>
-        </div>
-
-        <button type="button" (click)="addPrescriptionField()"
-                class="mt-2 bg-blue-600 text-white px-3 py-1 rounded-lg">+ Add Prescription</button>
-      </div>
-
-      <div class="pt-4">
-        <button type="submit"
-                class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700">Create Record</button>
-      </div>
-    </form>
-  </div>
-
-  <h2 class="text-2xl font-semibold text-blue-700 mb-4">Existing Medical Records</h2>
-  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div *ngFor="let record of medicalRecords"
-         class="bg-white rounded-2xl shadow p-4">
-      <h4 class="text-lg font-semibold text-blue-700">{{ record.patient }}</h4>
-      <p><strong>Reason:</strong> {{ record.reason }}</p>
-      <p><strong>Diagnosis:</strong> {{ record.diagnosis }}</p>
-      <p><strong>Date:</strong> {{ record.date }}</p>
-    </div>
-  </div>
-</div>
-
-
-
-
-
-
-
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-
-@Component({
-  selector: 'app-patient-medical-records',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './patient-medical-records.component.html'
-})
-export class PatientMedicalRecordsComponent {
-  medicalRecords = [
-    { id: 1, doctor: 'Dr. John Smith', reason: 'Cough', diagnosis: 'Cold', date: '2025-10-05', notes: 'Take rest' },
-    { id: 2, doctor: 'Dr. Priya Patel', reason: 'Back Pain', diagnosis: 'Muscle Strain', date: '2025-09-20', notes: 'Avoid lifting' }
-  ];
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class MedicalRecordDTO {
+    @NotNull
+    private Long appointmentId;
+    @NotNull
+    private Long patientId;
+    @NotNull
+    private Long doctorId;
+    private String reason;
+    private String diagnosis;
+    private String notes;
+    private List<PrescriptionDTO> prescriptions;
 }
 
+package com.cognizant.hams.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import java.util.List;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "medical_records")
+@Data
+public class MedicalRecord {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long recordId;
+
+    @ManyToOne
+    @JoinColumn(name = "patientId")
+    private Patient patient;
+
+    @ManyToOne
+    @JoinColumn(name = "doctorId")
+    private Doctor doctor;
+
+    private String reason;
+    private String diagnosis;
+    private String notes;
+
+    @OneToMany(mappedBy = "medicalRecord", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Prescription> prescriptions;
 
 
-
-
-<div class="p-6 font-sans">
-  <h2 class="text-2xl font-semibold text-blue-700 mb-4">My Medical Records</h2>
-  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-    <div *ngFor="let record of medicalRecords"
-         class="bg-white rounded-2xl shadow p-5">
-      <h4 class="text-lg font-semibold text-blue-700 mb-1">{{ record.reason }}</h4>
-      <p><strong>Doctor:</strong> {{ record.doctor }}</p>
-      <p><strong>Diagnosis:</strong> {{ record.diagnosis }}</p>
-      <p><strong>Date:</strong> {{ record.date }}</p>
-      <p><strong>Notes:</strong> {{ record.notes }}</p>
-    </div>
-  </div>
-</div>
-
-
-
-
-
-
-
-import { Routes } from '@angular/router';
-import { DoctorMedicalRecordsComponent } from './pages/doctor-medical-records/doctor-medical-records.component';
-import { PatientMedicalRecordsComponent } from './pages/patient-medical-records/patient-medical-records.component';
-
-export const routes: Routes = [
-  { path: 'doctor/medical-records', component: DoctorMedicalRecordsComponent },
-  { path: 'patient/medical-records', component: PatientMedicalRecordsComponent },
-];
-
-
-
-
-<button [routerLink]="['/doctor/medical-records']"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg">
-  Write Prescription
-</button>
-
-
-
-
-
-
-
-
-
-
-
-<button [routerLink]="['/patient/medical-records']"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg">
-  Medical Records
-</button>
+    private LocalDateTime createdAt = LocalDateTime.now();
+}

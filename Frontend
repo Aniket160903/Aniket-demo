@@ -1,124 +1,89 @@
-package com.cognizant.hams.dto.response;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
-
-import java.util.List;
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-
-public class MedicalRecordResponseDTO {
-    private Long recordId;
-    private Long patientId;
-    private Long doctorId;
-    private String patientName;
-    private String doctorName;
-    private String reason;
-    private String diagnosis;
-    private String notes;
-    private List<PrescriptionResponseDTO> prescriptions;
-    private LocalDateTime createdAt;
-}
-package com.cognizant.hams.controller;
-
-import com.cognizant.hams.dto.request.MedicalRecordDTO;
-import com.cognizant.hams.dto.response.MedicalRecordResponseDTO;
-import com.cognizant.hams.service.MedicalRecordService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
+import { Routes } from '@angular/router';
+import { Landing } from './features/landing/landing';
+import { PatientDashboard } from './features/patient/patient-dashboard/patient-dashboard';
+import { DoctorDashboard } from './features/doctor/doctor-dashboard/doctor-dashboard';
+import { PublicLayout } from './layouts/public-layout/public-layout';
+import { DashboardLayout } from './layouts/dashboard-layout/dashboard-layout';
+import { Login } from './features/auth/login/login';
+import { Register } from './features/auth/register/register';
+import { AuthLayout } from './layouts/auth-layout/auth-layout';
+import { DoctorAppointments } from './features/doctor/doctor-appointments/doctor-appointments';
+import { AdminDashboard } from './features/admin/admin-dashboard/admin-dashboard';
+import { MedicalRecordCreate } from './features/medical-record/create-record/medical-record-create';
 
 
-@RestController
-@RequestMapping("/api/medical-records")
-@RequiredArgsConstructor
-public class MedicalRecordController {
-    private final MedicalRecordService medicalRecordService;
-    @PostMapping
-    @PreAuthorize("hasRole('DOCTOR')")
-    public ResponseEntity<MedicalRecordResponseDTO> createRecord(@Valid @RequestBody MedicalRecordDTO dto) {
-        MedicalRecordResponseDTO saved = medicalRecordService.createRecord(dto);
-        return new ResponseEntity<>(saved, HttpStatus.CREATED);
-    }
-    @GetMapping("/patient")
-    @PreAuthorize("hasRole('PATIENT')")
-    public ResponseEntity<List<MedicalRecordResponseDTO>> getRecordsForPatient() {
-        return ResponseEntity.ok(medicalRecordService.getRecordsForPatient());
-    }
-    @GetMapping("/doctor/{doctorId}")
-    @PreAuthorize("hasRole('DOCTOR')")
-    public ResponseEntity<List<MedicalRecordResponseDTO>> getRecordsForDoctor(@PathVariable Long doctorId) {
-        return ResponseEntity.ok(medicalRecordService.getRecordsForDoctor(doctorId));
-    }
-}
+export const routes: Routes = [
+  // Public routes (Landing, About, etc.)
+  {
+    path: '',
+    component: PublicLayout,
+    children: [{ path: '', component: Landing }],
+  },
+  // Patient Dashboard
+  {
+    path: 'patient',
+    component: DashboardLayout,
+    children: [{ path: 'dashboard', component: PatientDashboard }],
+  },
+  // Doctor Dashboard
+  {
+    path: 'doctor',
+    component: DashboardLayout,
+    children: [
+      {
+        path: 'dashboard',
+        component: DoctorDashboard,
+      },
+      {
+        path: 'appointments',
+        component: DoctorAppointments,
+      },
+      {
+        path: 'patients',
+        loadComponent: () =>
+          import('./features/doctor/patient-management/patient-management').then(
+            (m) => m.PatientManagement
+          ),
+      },
+     {
+      path:''
+     }
+    ],
+  },
 
+   { path: 'medical-record/create', component: MedicalRecordCreate },
 
-package com.cognizant.hams.dto.request;
+  // Admin Dashboard
+  {
+    path: 'admin',
+    component: DashboardLayout,
+    children: [
+      {
+        path: 'dashboard',
+        component: AdminDashboard,
+      },
+    ],
+  },
 
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.util.List;
-
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class MedicalRecordDTO {
-    @NotNull
-    private Long appointmentId;
-    @NotNull
-    private Long patientId;
-    @NotNull
-    private Long doctorId;
-    private String reason;
-    private String diagnosis;
-    private String notes;
-    private List<PrescriptionDTO> prescriptions;
-}
-
-package com.cognizant.hams.entity;
-
-import jakarta.persistence.*;
-import lombok.Data;
-import java.util.List;
-
-import java.time.LocalDateTime;
-
-@Entity
-@Table(name = "medical_records")
-@Data
-public class MedicalRecord {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long recordId;
-
-    @ManyToOne
-    @JoinColumn(name = "patientId")
-    private Patient patient;
-
-    @ManyToOne
-    @JoinColumn(name = "doctorId")
-    private Doctor doctor;
-
-    private String reason;
-    private String diagnosis;
-    private String notes;
-
-    @OneToMany(mappedBy = "medicalRecord", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Prescription> prescriptions;
-
-
-    private LocalDateTime createdAt = LocalDateTime.now();
-}
+  //Auth routes (Login, Register, etc.)
+  {
+    path: 'auth',
+    component: AuthLayout,
+    children: [
+      {
+        path: 'login',
+        component: Login,
+      },
+      {
+        path: 'register',
+        component: Register,
+      },
+    ],
+  },
+  // Wildcard route for a 404 page (optional)
+  {
+    path: '**',
+    redirectTo: '',
+    pathMatch: 'full',
+  },
+];
